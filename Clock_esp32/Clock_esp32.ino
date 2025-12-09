@@ -4,7 +4,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-// ---------- OLED ----------
+// ==== OLED ====
 #define OLED_WIDTH 128
 #define OLED_HEIGHT 32
 #define OLED_RESET -1
@@ -26,8 +26,6 @@ const char *time_zone = "EET-2EEST,M3.5.0/3,M10.5.0/4";
 
 // ==== Buzzer ====
 #define BUZZER_PIN 25
-#define BUZZER_CHANNEL 0
-#define BUZZER_RES 8
 
 // ==== MENU MODES ====
 enum Mode {
@@ -40,32 +38,25 @@ enum Mode {
 Mode currentMode = MODE_CLOCK;
 
 // Timer variables
-int timerSeconds = 15 * 60;
+int timerSeconds = 15 * 60; // 15 minutes
 bool timerRunning = false;
 
-// ==== BUTTON HANDLING ====
-bool btnPressed(int pin) {
-  return digitalRead(pin) == LOW;
-}
-
-// ==== Buzzer ====
-void beep(int freq = 2000, int duration = 120) {
-  ledcWriteTone(BUZZER_CHANNEL, freq);
-
-  
-  delay(duration);
-  ledcWriteTone(BUZZER_CHANNEL, 0);
-}
-
-// ==== OLED ====
+// ==== HELPER OLED ====
 void clearOLED() {
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
 }
 
-// ==== NTP CALLBACK ====
+// ==== Beep helper ====
+void beep(int freq = 2000, int duration = 120) {
+  tone(BUZZER_PIN, freq, duration);
+  delay(duration + 20);
+  noTone(BUZZER_PIN);
+}
+
+// ==== NTP ====
 void timeavailable(struct timeval *t) {
-  clearOLED();
+  display.clearDisplay();
   display.setCursor(0, 0);
   display.setTextSize(1);
   display.println("Time synced!");
@@ -92,7 +83,6 @@ void drawClock() {
   display.setTextSize(1);
   display.setCursor(0, 24);
   display.println(dateStr);
-
   display.display();
 }
 
@@ -110,7 +100,6 @@ void drawTimer() {
   display.setTextSize(1);
   display.setCursor(0, 24);
   display.println(timerRunning ? "Running..." : "Paused");
-
   display.display();
 }
 
@@ -128,57 +117,52 @@ void drawWiFi() {
   display.setTextSize(1);
   display.setCursor(0, 24);
   display.println("dBm RSSI");
-
   display.display();
 }
 
-// ==== ANIMATION ====
+// ==== SIMPLE ANIMATION ====
 int dotPos = 0;
+
 void drawAnimation() {
   clearOLED();
   display.setTextSize(2);
   display.setCursor(0, 0);
-  display.print("Load");
+  display.print("Loading");
 
-  for (int i = 0; i < dotPos; i++) display.print(".");
+  for (int i = 0; i < dotPos; i++) {
+    display.print(".");
+  }
+
   dotPos = (dotPos + 1) % 4;
 
   display.display();
 }
 
-// ==== HANDLE BUTTONS ====
+// ==== BUTTON HANDLING ====
+bool btnPressed(int pin) {
+  return digitalRead(pin) == LOW;
+}
+
 void handleButtons() {
   static unsigned long lastPress = 0;
   if (millis() - lastPress < 200) return;
 
-  // === MENU BUTTON ===
   if (btnPressed(BTN_MENU)) {
     currentMode = (Mode)((currentMode + 1) % 4);
     beep();
     lastPress = millis();
   }
 
-  // === TIMER CONTROL ===
-  if (currentMode == MODE_TIMER) {
+  if (btnPressed(BTN_UP)) {
+    beep(2500);
+    if (currentMode == MODE_TIMER) timerSeconds += 60;
+    lastPress = millis();
+  }
 
-    // UP → add +1 minute, start if paused
-    if (btnPressed(BTN_UP)) {
-      if (!timerRunning) timerRunning = true;
-      timerSeconds += 60;
-      beep(2400);
-      lastPress = millis();
-    }
-
-    // DOWN → pause OR decrease time
-    if (btnPressed(BTN_DOWN)) {
-      if (timerRunning) {
-        timerRunning = false;  // pause
-      } else {
-        if (timerSeconds > 60) timerSeconds -= 60;
-      }
-      beep(1500);
-      lastPress = millis();
-    }
+  if (btnPressed(BTN_DOWN)) {
+    beep(1500);
+    if (currentMode == MODE_TIMER && timerSeconds > 10) timerSeconds -= 60;
+    lastPress = millis();
   }
 }
 
@@ -198,32 +182,34 @@ void setup() {
   pinMode(BTN_DOWN, INPUT_PULLUP);
 
   // Buzzer
-  ledcSetup(BUZZER_CHANNEL, 2000, BUZZER_RES);
-  ledcAttachPin(BUZZER_PIN, BUZZER_CHANNEL);
+  pinMode(BUZZER_PIN, OUTPUT);
 
   // WiFi
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
-  clearOLED();
+  display.clearDisplay();
   display.setCursor(0, 0);
   display.setTextSize(1);
   display.println("Connecting WiFi...");
   display.display();
 
-  while (WiFi.status() != WL_CONNECTED) delay(300);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(300);
+  }
 
-  // Sync time
+  // NTP
   esp_sntp_servermode_dhcp(1);
   sntp_set_time_sync_notification_cb(timeavailable);
   configTzTime(time_zone, ntpServer1, ntpServer2);
+
+  delay(500);
 }
 
 // ==== LOOP ====
 unsigned long lastTimerTick = 0;
 
 void loop() {
-
   handleButtons();
 
   // Timer countdown
@@ -232,6 +218,7 @@ void loop() {
     timerSeconds--;
 
     if (timerSeconds <= 0) {
+      // Timer finished
       for (int i = 0; i < 5; i++) {
         beep(1000, 200);
         delay(150);
@@ -241,6 +228,7 @@ void loop() {
     }
   }
 
+  // Draw current mode
   switch (currentMode) {
     case MODE_CLOCK:     drawClock(); break;
     case MODE_TIMER:     drawTimer(); break;
@@ -248,5 +236,5 @@ void loop() {
     case MODE_ANIMATION: drawAnimation(); break;
   }
 
-  delay(60);
+  delay(100);
 }
