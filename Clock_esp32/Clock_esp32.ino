@@ -127,13 +127,13 @@ void drawAnimation() {
   clearOLED();
   display.setTextSize(2);
   display.setCursor(0, 0);
-  display.print("Loading");
+  display.print("GO WORKING NOW");
 
   for (int i = 0; i < dotPos; i++) {
-    display.print(".");
+    display.print("!");
   }
 
-  dotPos = (dotPos + 1) % 4;
+  dotPos = (dotPos + 1) % 6;
 
   display.display();
 }
