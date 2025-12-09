@@ -144,27 +144,35 @@ bool btnPressed(int pin) {
 }
 
 void handleButtons() {
-  static unsigned long lastPress = 0;
-  if (millis() - lastPress < 200) return;
+    // Перемикання режимів
+    if(btnPressed(BTN_MENU)){
+        currentMode = (Mode)((currentMode + 1) % 4);
+        beep();
+        delay(200);
+    }
 
-  if (btnPressed(BTN_MENU)) {
-    currentMode = (Mode)((currentMode + 1) % 4);
-    beep();
-    lastPress = millis();
-  }
+    if(currentMode == MODE_TIMER){
+        // UP → збільшити або старт
+        if(btnPressed(BTN_UP)){
+            if(!timerRunning) timerRunning = true; // старт таймера
+            timerSeconds += 60; // +1 хв
+            beep();
+            delay(200);
+        }
 
-  if (btnPressed(BTN_UP)) {
-    beep(2500);
-    if (currentMode == MODE_TIMER) timerSeconds += 60;
-    lastPress = millis();
-  }
-
-  if (btnPressed(BTN_DOWN)) {
-    beep(1500);
-    if (currentMode == MODE_TIMER && timerSeconds > 10) timerSeconds -= 60;
-    lastPress = millis();
-  }
+        // DOWN → зменшити або пауза
+        if(btnPressed(BTN_DOWN)){
+            if(timerRunning){
+                timerRunning = false; // пауза
+            } else if(timerSeconds > 10){
+                timerSeconds -= 60; // -1 хв
+            }
+            beep();
+            delay(200);
+        }
+    }
 }
+
 
 // ==== SETUP ====
 void setup() {
