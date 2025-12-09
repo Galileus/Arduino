@@ -130,7 +130,7 @@ void drawAnimation() {
   display.print("GO WORKING NOW");
 
   for (int i = 0; i < dotPos; i++) {
-    display.print("!");
+    display.print(">");
   }
 
   dotPos = (dotPos + 1) % 6;
