@@ -32,8 +32,32 @@ enum Mode {
   MODE_CLOCK = 0,
   MODE_TIMER,
   MODE_WIFI,
-  MODE_ANIMATION
+  MODE_ANIMATION,
+  MODE_ANIMATION1
 };
+
+
+// =============ROCKET
+
+static const unsigned char PROGMEM rocket_16x16[] = {
+  0x03,0x80,
+  0x07,0xC0,
+  0x0F,0xE0,
+  0x1C,0x70,
+  0x38,0x38,
+  0x70,0x1C,
+  0x70,0x1C,
+  0x7F,0xFC,
+  0x7F,0xFC,
+  0x70,0x1C,
+  0x70,0x1C,
+  0x38,0x38,
+  0x1C,0x70,
+  0x0F,0xE0,
+  0x07,0xC0,
+  0x03,0x80
+};
+
 
 Mode currentMode = MODE_CLOCK;
 
@@ -127,7 +151,7 @@ void drawAnimation() {
   clearOLED();
   display.setTextSize(2);
   display.setCursor(0, 0);
-  display.print("GO WORKING NOW");
+  display.print("GO WORKING NOW ");
 
   for (int i = 0; i < dotPos; i++) {
     display.print(">");
@@ -138,6 +162,29 @@ void drawAnimation() {
   display.display();
 }
 
+// ===== ROCKET ANIMATION =======
+
+void animateRocket() {
+  for (int x = 128; x > -16; x--) {
+    display.clearDisplay();
+    display.drawBitmap(x, 24, rocket_16x16, 16, 16, WHITE);
+    display.display();
+    delay(10);  // швидкість анімації (збільши/зменш)
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ==== BUTTON HANDLING ====
 bool btnPressed(int pin) {
   return digitalRead(pin) == LOW;
@@ -146,7 +193,7 @@ bool btnPressed(int pin) {
 void handleButtons() {
     // Перемикання режимів
     if(btnPressed(BTN_MENU)){
-        currentMode = (Mode)((currentMode + 1) % 4);
+        currentMode = (Mode)((currentMode + 1) % 5);
         beep();
         delay(200);
     }
@@ -242,6 +289,7 @@ void loop() {
     case MODE_TIMER:     drawTimer(); break;
     case MODE_WIFI:      drawWiFi(); break;
     case MODE_ANIMATION: drawAnimation(); break;
+    case MODE_ANIMATION1: animateRocket(); break;
   }
 
   delay(100);
